@@ -29,35 +29,37 @@ class Scheduler {
     try {
       const taskFiles = fs.readdirSync(this.tasksPath);
       taskFiles.forEach(file => {
-        const filePath = path.join(this.tasksPath, file);
-        try {
-          const Task = require(filePath);
-          // Get instance of task class
-          const taskInstance = Ioc.make(Task);
+        if (path.extname(file) === '.js') {
+          const filePath = path.join(this.tasksPath, file);
+          try {
+            const Task = require(filePath);
+            // Get instance of task class
+            const taskInstance = Ioc.make(Task);
 
-          // Every task must expose a schedule
-          if (!Task.schedule) {
-            throw new Error(`No schedule found for task: ${filePath}`);
-          }
+            // Every task must expose a schedule
+            if (!Task.schedule) {
+              throw new Error(`No schedule found for task: ${filePath}`);
+            }
 
-          // Every task must expose a handle function
-          if (!taskInstance.handle) {
-            throw new Error(`No handler found for task: ${filePath}`);
-          }
+            // Every task must expose a handle function
+            if (!taskInstance.handle) {
+              throw new Error(`No handler found for task: ${filePath}`);
+            }
 
-          // Track currently registered tasks in memory
-          this.registeredTasks.push(Task);
+            // Track currently registered tasks in memory
+            this.registeredTasks.push(Task);
 
-          // Register task handler
-          this.instance.scheduleJob(Task.schedule, co.wrap(taskInstance.handle.bind(taskInstance)));
-        } catch (e) {
-          // If this file is not a valid javascript class, print warning and return
-          if (e instanceof ReferenceError) {
-            this.logger.warn('Unable to import task class <%s>. Is it a valid javascript class?', file);
-            return;
-          } else {
-            this.logger.error(e);
-            throw e;
+            // Register task handler
+            this.instance.scheduleJob(Task.schedule, co.wrap(taskInstance.handle.bind(taskInstance)));
+          } catch (e) {
+            // If this file is not a valid javascript class, print warning and return
+            if (e instanceof ReferenceError) {
+              this.logger.warn('Unable to import task class <%s>. Is it a valid javascript class?', file);
+              return;
+            } else {
+              this.logger.error(e);
+              throw e;
+            }
           }
         }
       });
